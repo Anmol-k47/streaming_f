@@ -13,7 +13,9 @@ function buildApiUrl(path) {
         if (realPath.startsWith('/tatatv-json/')) {
             realPath = realPath.replace('/tatatv-json/', '/tatatv-web/');
         }
-        return PROXY_BASE + encodeURIComponent(DIRECT_BASE + realPath);
+        // Do NOT wrap the JSON manifest API calls in the stream_proxy.
+        // Doing so causes a 403 Forbidden from the PHP proxy.
+        return DIRECT_BASE + realPath;
     }
     return path;
 }
