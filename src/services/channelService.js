@@ -4,19 +4,49 @@
  * before forwarding to allinonereborn.online — browsers can't do this, Node.js can.
  */
 
-const TATATV_JSON_PROXY = '/tatatv-json/xchannels.json';
-const IPTV_WEB_JSON_PROXY = '/iptv-web/xchannels.json';
-const ZEE5_JSON_PROXY = '/zee5/channels199.json';
-const FANCODE_JSON_PROXY = '/fctest/json/fancode_latest.json';
-const SONY_HTML_PROXY = '/sony/'; // User indicated base url is /sony/ and playing link is similar
+const PROXY_BASE = 'https://allinonereborn.store/livtest3/stream_proxy.php?url=';
+const DIRECT_BASE = 'https://allinonereborn.store';
 
-/** Strip origin → proxy path */
+function buildApiUrl(path) {
+    if (import.meta.env.PROD) {
+        let realPath = path;
+        if (realPath.startsWith('/tatatv-json/')) {
+            realPath = realPath.replace('/tatatv-json/', '/tatatv-web/');
+        }
+        return PROXY_BASE + encodeURIComponent(DIRECT_BASE + realPath);
+    }
+    return path;
+}
+
+const TATATV_JSON_PROXY = buildApiUrl('/tatatv-json/xchannels.json');
+const IPTV_WEB_JSON_PROXY = buildApiUrl('/iptv-web/xchannels.json');
+const ZEE5_JSON_PROXY = buildApiUrl('/zee5/channels199.json');
+const FANCODE_JSON_PROXY = buildApiUrl('/fctest/json/fancode_latest.json');
+const SONY_HTML_PROXY = buildApiUrl('/sony/');
+
+/** Strip origin → proxy path or absolute proxy path in Prod */
 function toProxyPath(url) {
     if (!url) return url;
+
+    // If it's already a stream proxy link
+    if (url.includes('stream_proxy.php')) {
+        if (import.meta.env.PROD && url.startsWith('/')) {
+            return DIRECT_BASE + url;
+        }
+        return url;
+    }
+
     try {
         const u = new URL(url);
-        return u.pathname + u.search;
+        let path = u.pathname + u.search;
+        if (import.meta.env.PROD) {
+            return PROXY_BASE + encodeURIComponent(DIRECT_BASE + path);
+        }
+        return path;
     } catch {
+        if (import.meta.env.PROD && url.startsWith('/')) {
+            return PROXY_BASE + encodeURIComponent(DIRECT_BASE + url);
+        }
         return url;
     }
 }
@@ -202,6 +232,10 @@ export async function fetchChannels() {
 
                     // Wrap in user's proxy
                     url = `/livtest3/stream_proxy.php?url=${encodeURIComponent(targetM3u8)}`;
+
+                    if (import.meta.env.PROD) {
+                        url = DIRECT_BASE + url;
+                    }
                 }
 
                 addChannel('Sony TV', 'Sony Channels', {
