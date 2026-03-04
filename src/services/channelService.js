@@ -38,24 +38,16 @@ function toProxyPath(url) {
         return url;
     }
 
-    // Only wrap in the stream_proxy if the host strictly requires it (e.g. sony-new)
-    const requiresProxy = url.includes('/sony-new/');
-
     try {
         const u = new URL(url);
         let path = u.pathname + u.search;
         if (import.meta.env.PROD) {
-            return requiresProxy
-                ? PROXY_BASE + encodeURIComponent(DIRECT_BASE + path)
-                : DIRECT_BASE + path;
+            return PROXY_BASE + encodeURIComponent(DIRECT_BASE + path);
         }
         return path;
     } catch {
-        // If it's a relative URL
         if (import.meta.env.PROD && url.startsWith('/')) {
-            return requiresProxy
-                ? PROXY_BASE + encodeURIComponent(DIRECT_BASE + url)
-                : DIRECT_BASE + url;
+            return PROXY_BASE + encodeURIComponent(DIRECT_BASE + url);
         }
         return url;
     }
