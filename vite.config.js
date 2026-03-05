@@ -26,9 +26,16 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         headers: STREAM_HEADERS,
+        proxyTimeout: 60000,
+        timeout: 60000,
+        xfwd: true,
         configure: (proxy) => {
           proxy.on('error', (err, req) => {
             console.error(`[Proxy ERROR] ${req.url}:`, err.message)
+          })
+          proxy.on('proxyRes', (proxyRes, req, res) => {
+            // Disable buffering to stream video chunks directly to the client instantly
+            proxyRes.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
           })
         },
       },
