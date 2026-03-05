@@ -29,15 +29,21 @@ function toProxyPath(url) {
         return PROXY_BASE + encodeURIComponent(url);
     }
 
-    // Otherwise, strip the origin down to a relative path.
-    // e.g. https://allinonereborn.store/tatatv-web/live.php?id=...
-    // becomes -> /tatatv-web/live.php?id=...
-    // This allows the browser to make the request to our own Vite server,
-    // which then forwards it securely WITH headers to the destination.
+    // Otherwise, strip the origin down to a relative path for LOCALHOST.
+    // e.g. https://allinonereborn.store/tatatv-web/live.php?id=... -> /tatatv-web/live.php?id=...
+    // IN PRODUCTION: We use corsproxy.io to blast the video straight to the client instantly
+    // to avoid the 500 timeouts that happen when routing heavy video through Vite on Render.
     try {
         const u = new URL(url);
-        return u.pathname + u.search;
+        let path = u.pathname + u.search;
+        if (import.meta.env.PROD) {
+            return `https://corsproxy.io/?url=${encodeURIComponent(DIRECT_BASE + path)}`;
+        }
+        return path;
     } catch {
+        if (import.meta.env.PROD && url.startsWith('/')) {
+            return `https://corsproxy.io/?url=${encodeURIComponent(DIRECT_BASE + url)}`;
+        }
         return url;
     }
 }
