@@ -16,6 +16,8 @@ export default defineConfig({
   define: { global: 'globalThis' },
   optimizeDeps: { include: ['hls.js', 'shaka-player'] },
   server: {
+    host: '0.0.0.0', // Exposes the server to Render's network
+    port: process.env.PORT || 5173, // Binds to the port Render provides
     proxy: {
       // /tatatv-web/* → allinonereborn.store with injected Referer
       '/tatatv-web': {
