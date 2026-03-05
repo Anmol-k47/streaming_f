@@ -18,6 +18,7 @@ export default defineConfig({
   server: {
     host: '0.0.0.0', // Exposes the server to Render's network
     port: process.env.PORT || 5173, // Binds to the port Render provides
+    allowedHosts: true, // Disables Vite's DNS rebinding protection for Render URLs
     proxy: {
       // /tatatv-web/* → allinonereborn.store with injected Referer
       '/tatatv-web': {
