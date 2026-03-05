@@ -8,15 +8,9 @@ const PROXY_BASE = 'https://allinonereborn.store/livtest3/stream_proxy.php?url='
 const DIRECT_BASE = 'https://allinonereborn.store';
 
 function buildApiUrl(path) {
-    if (import.meta.env.PROD) {
-        let realPath = path;
-        if (realPath.startsWith('/tatatv-json/')) {
-            realPath = realPath.replace('/tatatv-json/', '/tatatv-web/');
-        }
-        // Do NOT wrap the JSON manifest API calls in the stream_proxy.
-        // Doing so causes a 403 Forbidden from the PHP proxy.
-        return DIRECT_BASE + realPath;
-    }
+    // The app runs as a persistent Vite Server on Render now.
+    // We want the frontend to ALWAYS use the local Vite proxy paths (e.g. /tatatv-web/)
+    // so that the backend server can intercept and append the required Referer headers.
     return path;
 }
 
@@ -26,37 +20,24 @@ const ZEE5_JSON_PROXY = buildApiUrl('/zee5/channels199.json');
 const FANCODE_JSON_PROXY = buildApiUrl('/fctest/json/fancode_latest.json');
 const SONY_HTML_PROXY = buildApiUrl('/sony/');
 
-/** Strip origin → proxy path or absolute proxy path in Prod */
+/** Strip origin → proxy path */
 function toProxyPath(url) {
     if (!url) return url;
 
-    // If it's already a stream proxy link
-    if (url.includes('stream_proxy.php')) {
-        if (import.meta.env.PROD && url.startsWith('/')) {
-            return DIRECT_BASE + url;
-        }
-        return url;
+    // Use absolute proxy wrap ONLY for Sony since the HTML provides it explicitly
+    if (url.includes('/sony-new/')) {
+        return PROXY_BASE + encodeURIComponent(url);
     }
 
-    // Only wrap in the stream_proxy if the host strictly requires it (e.g. sony-new)
-    // Other streams like TataTV fail because the PHP proxy lacks Referer headers.
-    const requiresProxy = url.includes('/sony-new/');
-
+    // Otherwise, strip the origin down to a relative path.
+    // e.g. https://allinonereborn.store/tatatv-web/live.php?id=...
+    // becomes -> /tatatv-web/live.php?id=...
+    // This allows the browser to make the request to our own Vite server,
+    // which then forwards it securely WITH headers to the destination.
     try {
         const u = new URL(url);
-        let path = u.pathname + u.search;
-        if (import.meta.env.PROD) {
-            return requiresProxy
-                ? PROXY_BASE + encodeURIComponent(DIRECT_BASE + path)
-                : DIRECT_BASE + path;
-        }
-        return path;
+        return u.pathname + u.search;
     } catch {
-        if (import.meta.env.PROD && url.startsWith('/')) {
-            return requiresProxy
-                ? PROXY_BASE + encodeURIComponent(DIRECT_BASE + url)
-                : DIRECT_BASE + url;
-        }
         return url;
     }
 }
