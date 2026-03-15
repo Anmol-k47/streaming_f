@@ -51,16 +51,9 @@ function toProxyPath(url) {
     if (url.includes('allinonereborn.store') || url.includes('allinonereborn.online')) {
         try {
             const u = new URL(url);
-            let path = u.pathname + u.search;
-            if (import.meta.env.PROD) {
-                return `https://corsproxy.io/?url=${encodeURIComponent(DIRECT_BASE + path)}`;
-            }
-            return path;
+            return u.pathname + u.search;
         } catch {
-            // URL might already be a relative path
-            if (import.meta.env.PROD && url.startsWith('/')) {
-                return `https://corsproxy.io/?url=${encodeURIComponent(DIRECT_BASE + url)}`;
-            }
+            // Already a relative path
             return url;
         }
     }
