@@ -47,11 +47,12 @@ function VideoControls({ videoRef, isPlaying, isMuted, onPlayPause, onMuteToggle
   const [playbackRate, setPlaybackRate] = useState(1);
 
   const fmt = (s) => {
-    if (!s || !isFinite(s)) return '0:00';
+    if (!s || !isFinite(s) || s > 360000) return 'Live';
     const m = Math.floor(s / 60); const sec = Math.floor(s % 60);
     return `${m}:${sec.toString().padStart(2, '0')}`;
   };
-  const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const isLive = duration > 360000 || !isFinite(duration);
+  const pct = !isLive && duration > 0 ? (currentTime / duration) * 100 : 0;
 
   const handleSeekDrag = (e) => onSeek(Number(e.target.value));
 
@@ -131,8 +132,14 @@ function VideoControls({ videoRef, isPlaying, isMuted, onPlayPause, onMuteToggle
               </div>
             </div>
 
-            <span className="text-white/70 text-xs font-medium ml-2 font-mono">
-              {fmt(currentTime)}{duration > 0 ? ` / ${fmt(duration)}` : ''}
+            <span className="text-white/70 text-xs font-medium ml-2 font-mono flex items-center gap-1.5">
+              {isLive ? (
+                <>
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-500 animate-pulse-glow" /> LIVE
+                </>
+              ) : (
+                <>{fmt(currentTime)}{duration > 0 ? ` / ${fmt(duration)}` : ''}</>
+              )}
             </span>
           </div>
 
@@ -331,6 +338,7 @@ export default function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isBuffering, setIsBuffering] = useState(false);
   const [showControls, setShowControls] = useState(true);
   const [showCustomUrl, setShowCustomUrl] = useState(false);
   const [customUrl, setCustomUrl] = useState('');
@@ -394,6 +402,8 @@ export default function App() {
       },
       timeupdate: () => setCurrentTime(video.currentTime),
       durationchange: () => setDuration(video.duration || 0),
+      waiting: () => setIsBuffering(true),
+      playing: () => setIsBuffering(false),
     };
     Object.entries(handlers).forEach(([e, fn]) => video.addEventListener(e, fn));
 
@@ -549,6 +559,9 @@ export default function App() {
             <div className="flex items-center gap-1">
               <button onClick={() => setViewMode('channels')} className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-colors', viewMode === 'channels' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.05]')}>
                 <span className="flex items-center gap-1.5"><Tv className="h-3.5 w-3.5" /> Channels</span>
+              </button>
+              <button onClick={() => setViewMode('matches')} className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-colors', viewMode === 'matches' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.05]')}>
+                <span className="flex items-center gap-1.5"><Zap className="h-3.5 w-3.5" /> Live Matches</span>
               </button>
               <button onClick={() => setViewMode('url')} className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-colors', viewMode === 'url' ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.05]')}>
                 <span className="flex items-center gap-1.5"><Link className="h-3.5 w-3.5" /> Custom URL</span>
@@ -726,6 +739,57 @@ export default function App() {
                   </div>
                 </div>
               </div>
+            ) : viewMode === 'matches' ? (
+              /* ── Live Matches Mode ── */
+              <div className="flex-1 overflow-auto p-6">
+                <div className="max-w-4xl mx-auto space-y-6">
+                  <h2 className="text-lg font-bold flex items-center gap-2"><Zap className="h-5 w-5 text-amber-500" /> Live Matches</h2>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* IND VS ENG MATCH */}
+                    <div 
+                      className="group relative rounded-xl border border-white/[0.08] bg-white/[0.04] hover:bg-white/[0.08] hover:border-white/[0.15] transition-all cursor-pointer overflow-hidden flex flex-col"
+                      onClick={() => playStream('https://otte.live.fly.ww.aiv-cdn.net/syd-nitro/live/dash/enc/ppulp45ou8/out/v1/564bb083afea4561a5a60c4447258379/cenc.mpd', {
+                        id: 'ind-vs-eng',
+                        name: 'IND vs ENG',
+                        category: 'Live Match',
+                        logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/8/8d/Cricket_India_Crest.svg/1200px-Cricket_India_Crest.svg.png',
+                        drm: {
+                          keySystem: 'org.w3.clearkey',
+                          clearKeys: [{
+                            kid: '03018e1facaf7f344fa3d7439c6fc5b2',
+                            key: '48a92e8fc0c897a7b23044f4b86e544b'
+                          }]
+                        }
+                      })}
+                    >
+                      <div className="aspect-[21/9] bg-black/40 relative flex items-center justify-center p-4">
+                         <span className="absolute top-2 left-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500/90 text-white border border-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] flex items-center gap-1">
+                           <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" /> LIVE
+                         </span>
+                         <div className="flex items-center justify-center gap-4 w-full">
+                           <div className="flex flex-col items-center">
+                             <div className="h-10 w-10 flex border-[2px] border-blue-500 rounded-full bg-white shrink-0 overflow-hidden p-1 shadow-[0_0_10px_rgba(59,130,246,0.3)]">
+                               <img src="https://upload.wikimedia.org/wikipedia/en/thumb/8/8d/Cricket_India_Crest.svg/120px-Cricket_India_Crest.svg.png" alt="IND" className="w-full h-full object-contain" />
+                             </div>
+                             <span className="text-[10px] mt-1.5 font-bold uppercase tracking-wider text-white">IND</span>
+                           </div>
+                           <span className="text-amber-500 font-black text-sm italic">VS</span>
+                           <div className="flex flex-col items-center">
+                             <div className="h-10 w-10 flex border-[2px] border-red-500 rounded-full bg-white shrink-0 overflow-hidden p-1 shadow-[0_0_10px_rgba(239,68,68,0.3)]">
+                               <img src="https://upload.wikimedia.org/wikipedia/en/thumb/b/be/England_and_Wales_Cricket_Board_logo.svg/120px-England_and_Wales_Cricket_Board_logo.svg.png" alt="ENG" className="w-full h-full object-contain" />
+                             </div>
+                             <span className="text-[10px] mt-1.5 font-bold uppercase tracking-wider text-white">ENG</span>
+                           </div>
+                         </div>
+                      </div>
+                      <div className="p-3">
+                        <h3 className="font-semibold text-xs group-hover:text-primary transition-colors line-clamp-1">IND vs ENG - Live Streaming</h3>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">International Cricket</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             ) : (
               /* ── Channel Browser Mode ── */
               <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
@@ -871,6 +935,16 @@ export default function App() {
                     )}
                     <Button variant="ghost" size="sm" onClick={() => setPlayerStatus('idle')} className="text-xs text-muted-foreground">Dismiss</Button>
                   </div>
+                </div>
+              )}
+              
+              {/* Buffering Overlay */}
+              {playerStatus === 'playing' && isBuffering && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/50 backdrop-blur-[2px] z-20 pointer-events-none">
+                  <div className="relative">
+                    <Loader2 className="h-10 w-10 text-primary animate-spin" />
+                  </div>
+                  <p className="text-[11px] text-white/90 font-medium animate-pulse tracking-wide">Buffering…</p>
                 </div>
               )}
 

@@ -20,7 +20,7 @@ const ZEE5_JSON_PROXY = buildApiUrl('/zee5/channels199.json');
 const FANCODE_JSON_PROXY = buildApiUrl('/fctest/json/fancode_latest.json');
 const SONY_HTML_PROXY = buildApiUrl('/sony/');
 
-/** Strip origin → proxy path */
+/** Strip origin → proxy path ONLY for domains we proxy */
 function toProxyPath(url) {
     if (!url) return url;
 
@@ -29,27 +29,35 @@ function toProxyPath(url) {
         return PROXY_BASE + encodeURIComponent(url);
     }
 
-    // Otherwise, strip the origin down to a relative path for LOCALHOST.
-    // e.g. https://allinonereborn.store/tatatv-web/live.php?id=... -> /tatatv-web/live.php?id=...
-    // IN PRODUCTION: We use corsproxy.io to blast the video straight to the client instantly
-    // to avoid the 500 timeouts that happen when routing heavy video through Vite on Render.
-    try {
-        const u = new URL(url);
-        let path = u.pathname + u.search;
-        if (import.meta.env.PROD) {
-            return `https://corsproxy.io/?url=${encodeURIComponent(DIRECT_BASE + path)}`;
-        }
-        return path;
-    } catch {
-        if (import.meta.env.PROD && url.startsWith('/')) {
-            return `https://corsproxy.io/?url=${encodeURIComponent(DIRECT_BASE + url)}`;
-        }
+    // Leave absolute paths for /amit/ as they rely on direct cookies + have CORS open
+    if (url.includes('/amit/')) {
         return url;
     }
+
+    // Only strip origin if it points to allinonereborn servers
+    if (url.includes('allinonereborn.store') || url.includes('allinonereborn.online')) {
+        try {
+            const u = new URL(url);
+            let path = u.pathname + u.search;
+            if (import.meta.env.PROD) {
+                return `https://corsproxy.io/?url=${encodeURIComponent(DIRECT_BASE + path)}`;
+            }
+            return path;
+        } catch {
+            // URL might already be a relative path
+            if (import.meta.env.PROD && url.startsWith('/')) {
+                return `https://corsproxy.io/?url=${encodeURIComponent(DIRECT_BASE + url)}`;
+            }
+            return url;
+        }
+    }
+
+    // Return external CDN links (like Cloudfront for Zee5) unchanged
+    return url;
 }
 
 export async function fetchChannels() {
-    const providerList = ['TataTV', 'IPTV', 'Zee5', 'Fancode', 'Sony TV'];
+    const providerList = ['TataTV', 'IPTV', 'Zee5', 'Fancode', 'JioTV', 'Sony TV'];
     const dataByProvider = {};
 
     // Initialize provider structures
@@ -151,39 +159,56 @@ export async function fetchChannels() {
             });
         }
 
-        // 2.5 Fetch Fancode (Matches grouped by category, parsing multi-streams)
+        // 2.5 Fetch Fancode Main List (Matches grouped by category, parsing multi-streams)
         const fcRes = await fetch(FANCODE_JSON_PROXY).catch(() => null);
+        let primaryFcIds = new Set();
+        
         if (fcRes?.ok) {
             const data = await fcRes.json();
             // Try to extract matches from wherever they are in the JSON object
-            let matches = data.matches || [];
-            if (!Array.isArray(matches)) {
-                // If it's a nested object string, try parsing it
+            let matches = Array.isArray(data) ? data : (data.matches || []);
+            if (!Array.isArray(matches) && typeof data === 'string') {
                 try {
                     const parsed = JSON.parse(data);
-                    matches = parsed.matches || [];
+                    matches = Array.isArray(parsed) ? parsed : (parsed.matches || []);
                 } catch (e) { }
             }
 
             if (Array.isArray(matches)) {
-                matches.forEach((m, matchIdx) => {
-                    if (!m.streams || !Array.isArray(m.streams) || m.streams.length === 0) return;
+                // Group matches by match_id to handle multiple languages properly
+                const groupedMatches = {};
+                matches.forEach(m => {
+                    const matchId = m.match_id || m.id;
+                    if (!matchId) return;
+                    if (!groupedMatches[matchId]) {
+                        groupedMatches[matchId] = { ...m, all_streams: [] };
+                    }
+                    if (m.streams && Array.isArray(m.streams)) {
+                        groupedMatches[matchId].all_streams.push(...m.streams);
+                    }
+                });
 
-                    const categoryName = `FC - ${m.category || 'Live'}`;
+                Object.values(groupedMatches).forEach((m, matchIdx) => {
+                    const matchId = m.match_id || matchIdx;
+                    primaryFcIds.add(matchId);
+                    
+                    if (!m.all_streams || m.all_streams.length === 0) return;
+
+                    const categoryName = `FC - ${m.category || m.tournament || 'Live'}`;
 
                     // Extract each stream as a separate channel
-                    m.streams.forEach((stream, streamIdx) => {
+                    m.all_streams.forEach((stream, streamIdx) => {
                         const lang = stream.language || 'Unknown';
                         const streamUrl = stream.playlist_url || stream.url;
                         if (!streamUrl) return;
 
-                        const channelName = m.streams.length > 1
-                            ? `${m.title || `Match ${m.match_id}`} (${lang})`
-                            : (m.title || `Match ${m.match_id}`);
+                        const channelName = m.all_streams.length > 1
+                            ? `${m.title || `Match ${matchId}`} (${lang})`
+                            : (m.title || `Match ${matchId}`);
 
                         addChannel('Fancode', categoryName, {
-                            id: `fc-${m.match_id || matchIdx}-${streamIdx}`,
-                            name: channelName,
+                            id: `fc-primary-${matchId}-${streamIdx}`,
+                            name: channelName.trim(),
                             logo: m.image || '',
                             url: toProxyPath(streamUrl),
                             category: categoryName,
@@ -194,6 +219,97 @@ export async function fetchChannels() {
                     });
                 });
             }
+        }
+
+        // 2.6 Fetch Fancode Backup JSON
+        const fcBackupRes = await fetch('https://raw.githubusercontent.com/drmlive/fancode-live-events/refs/heads/main/fancode.json').catch(() => null);
+        if (fcBackupRes?.ok) {
+            const data = await fcBackupRes.json();
+            let matches = data.matches || [];
+            
+            if (Array.isArray(matches)) {
+                matches.forEach((m, matchIdx) => {
+                    const matchId = m.match_id || matchIdx;
+                    // Skip if primary already handled this match
+                    if (primaryFcIds.has(matchId)) return;
+
+                    const streamUrl = m.adfree_url || m.dai_url;
+                    if (!streamUrl) return;
+
+                    const categoryName = `FC - ${m.event_category || 'Live'}`;
+                    
+                    addChannel('Fancode', categoryName, {
+                        id: `fc-backup-${matchId}`,
+                        name: m.title || m.match_name || `Match ${matchId}`,
+                        logo: m.src || '',
+                        url: streamUrl, // Backup URL is direct (no token/proxy needed)
+                        category: categoryName,
+                        drm: null,
+                        isFancode: true,
+                        fcStatus: m.status || 'UPCOMING'
+                    });
+                });
+            }
+        }
+
+        // 2.7 Fetch JioTV
+        const JIOTV_JSON_PROXY = buildApiUrl('/jstrweb2/jstr.json');
+        const jioRes = await fetch(JIOTV_JSON_PROXY).catch(() => null);
+        if (jioRes?.ok) {
+            const data = await jioRes.json();
+            const channels = Array.isArray(data) ? data : [];
+            
+            channels.forEach(ch => {
+                if (!ch || !ch.mpd) return;
+
+                const categoryName = ch.category || 'JioTV Channels';
+                
+                // Parse the native clearKey dictionary into the format Shaka expects
+                let drm = null;
+                if (ch.drm && typeof ch.drm === 'object') {
+                    const keys = [];
+                    
+                    Object.entries(ch.drm).forEach(([kidHex, keyHex]) => {
+                        if (kidHex && keyHex && kidHex !== 'null' && keyHex !== 'null') {
+                            keys.push({
+                                kid: kidHex.toLowerCase(),
+                                key: keyHex.toLowerCase()
+                            });
+                        }
+                    });
+
+                    if (keys.length > 0) {
+                        drm = {
+                            keySystem: 'org.w3.clearkey',
+                            clearKeys: keys
+                        };
+                    }
+                }
+
+                // Construct the streaming URL
+                // 1. Swap the true CDN domain with our Vite proxy
+                let streamUrl = ch.mpd;
+                if (streamUrl.includes('jiotvmblive.cdn.jio.com')) {
+                    streamUrl = streamUrl.replace('https://jiotvmblive.cdn.jio.com', '/proxy-jiotv-live');
+                }
+                
+                // 2. Append the required authentication token directly
+                if (ch.token && ch.token !== 'null' && ch.token.trim() !== '') {
+                    const separator = streamUrl.includes('?') ? '&' : '?';
+                    // The token from the JSON has embedded newlines/spaces that break HMAC
+                    const cleanToken = ch.token.replace(/\s+/g, '');
+                    streamUrl += `${separator}${cleanToken}`;
+                }
+
+                addChannel('JioTV', categoryName, {
+                    id: `jiotv-${ch.channel_id || Math.random().toString(36).substr(2, 9)}`,
+                    name: ch.name || `JioTV Channel`,
+                    logo: ch.logo ? ch.logo.replace('https://jiotv.catchup.cdn.jio.com', '/proxy-jiotv-catchup') : '',
+                    url: toProxyPath(streamUrl), 
+                    category: categoryName,
+                    drm: drm
+                });
+            });
         }
 
         // 3. Fetch Sony (New HTML parsed)
@@ -242,6 +358,38 @@ export async function fetchChannels() {
                     url: url,
                     category: 'Sony Channels',
                     drm: null
+                });
+            }
+        }
+
+        // 3.5 Fetch SonyLive Events JSON
+        const sonyLiveEventsRes = await fetch('https://raw.githubusercontent.com/drmlive/sliv-live-events/main/sonyliv.json').catch(() => null);
+        if (sonyLiveEventsRes?.ok) {
+            const data = await sonyLiveEventsRes.json();
+            let matches = data.matches || [];
+            
+            if (Array.isArray(matches)) {
+                matches.forEach((m, matchIdx) => {
+                    let streamUrl = m.video_url || m.pub_url || m.dai_url;
+                    if (!streamUrl) return; // Skip upcoming matches without streaming URLs
+
+                    // Proxy the akamai URLs to bypass CORS during local dev
+                    if (streamUrl.includes('sonydaimenew.akamaized.net')) {
+                        streamUrl = streamUrl.replace('https://sonydaimenew.akamaized.net', '/proxy-sony-akamai');
+                    }
+
+                    const categoryName = `Sony - ${m.event_category || 'Live'}`;
+                    const channelName = m.match_name ? `${m.event_name} - ${m.match_name}` : m.event_name;
+                    
+                    addChannel('Sony TV', categoryName, {
+                        id: `sony-live-${m.contentId || matchIdx}`,
+                        name: channelName || `Sony Live ${matchIdx}`,
+                        logo: m.src || '',
+                        url: streamUrl, 
+                        category: categoryName,
+                        drm: null, // Stream URLs include necessary tokens/auth
+                        isLive: m.isLive
+                    });
                 });
             }
         }
