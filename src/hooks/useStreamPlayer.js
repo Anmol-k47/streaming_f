@@ -77,6 +77,11 @@ export function useStreamPlayer() {
                         }
                     }
 
+                    if (!url || url === 'undefined') {
+                        console.warn('[StreamX] Blocked invalid/undefined stream URL');
+                        return;
+                    }
+
                     const hls = new Hls({
                         enableWorker: true,
                         lowLatencyMode: true,
