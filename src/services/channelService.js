@@ -8,9 +8,15 @@ const PROXY_BASE = 'https://allinonereborn.store/livtest3/stream_proxy.php?url='
 const DIRECT_BASE = 'https://allinonereborn.store';
 
 function buildApiUrl(path) {
-    // The app runs as a persistent Vite Server on Render now.
-    // We want the frontend to ALWAYS use the local Vite proxy paths (e.g. /tatatv-web/)
-    // so that the backend server can intercept and append the required Referer headers.
+    if (import.meta.env.PROD) {
+        // Rewrite local aliases to real server paths
+        let remotePath = path;
+        if (path.startsWith('/tatatv-json/')) {
+            remotePath = path.replace('/tatatv-json/', '/tatatv-web/');
+        }
+        const absoluteUrl = `${DIRECT_BASE}${remotePath}`;
+        return `https://corsproxy.io/?url=${encodeURIComponent(absoluteUrl)}`;
+    }
     return path;
 }
 
