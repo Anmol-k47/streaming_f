@@ -66,15 +66,34 @@ app.use('/jstrweb2', allInOneProxy);
 app.use('/sony', allInOneProxy);
 app.use('/iptv-web', allInOneProxy);
 
-// Sony Akamai Proxy
-app.use('/proxy-sony-akamai', createProxyMiddleware({
-  target: 'https://sonydaimenew.akamaized.net',
+// Fancode Live CDN
+app.use('/proxy-fancode-flive', createProxyMiddleware({
+  target: 'https://in-mc-flive.fancode.com',
   changeOrigin: true,
+  secure: false,
+  pathRewrite: { '^/proxy-fancode-flive': '' },
   headers: {
-    'User-Agent': 'Mozilla/5.0'
+    'Origin': 'https://www.fancode.com',
+    'Referer': 'https://www.fancode.com/'
   },
-  pathRewrite: { '^/proxy-sony-akamai': '' },
   onProxyRes: (proxyRes) => {
+    proxyRes.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+  }
+}));
+
+// Fancode FDLIVE CDN
+app.use('/proxy-fancode-fdlive', createProxyMiddleware({
+  target: 'https://in-mc-fdlive.fancode.com',
+  changeOrigin: true,
+  secure: false,
+  pathRewrite: { '^/proxy-fancode-fdlive': '' },
+  headers: {
+    'Origin': 'https://www.fancode.com',
+    'Referer': 'https://www.fancode.com/'
+  },
+  onProxyRes: (proxyRes) => {
+    proxyRes.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
     proxyRes.headers['Access-Control-Allow-Origin'] = '*';
   }
 }));
@@ -83,12 +102,66 @@ app.use('/proxy-sony-akamai', createProxyMiddleware({
 app.use('/proxy-jiotv-live', createProxyMiddleware({
   target: 'https://jiotvmblive.cdn.jio.com',
   changeOrigin: true,
-  headers: {
-    'User-Agent': 'Mozilla/5.0'
+  secure: false,
+  onProxyReq: (proxyReq, req, res) => {
+    const rawPath = req.url.replace(/^\/proxy-jiotv-live/, '');
+    proxyReq.path = rawPath; // prevents http-proxy from re-encoding layout /* layout hmac crashes layout layout
+    proxyReq.removeHeader('origin');
+    proxyReq.setHeader('Origin', 'https://www.jiotv.com');
+    proxyReq.setHeader('Referer', 'https://www.jiotv.com/');
+    proxyReq.setHeader('User-Agent', '@allinone_reborn');
   },
-  pathRewrite: { '^/proxy-jiotv-live': '' },
   onProxyRes: (proxyRes) => {
+    proxyRes.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
     proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+  }
+}));
+
+// Sony Akamai Proxy
+app.use('/proxy-sony-akamai', createProxyMiddleware({
+  target: 'https://sonydaimenew.akamaized.net',
+  changeOrigin: true,
+  secure: false,
+  onProxyReq: (proxyReq, req) => {
+    const rawPath = req.url.replace(/^\/proxy-sony-akamai/, '');
+    proxyReq.path = rawPath;
+    proxyReq.removeHeader('origin');
+    proxyReq.removeHeader('referer');
+    proxyReq.setHeader('User-Agent', 'Mozilla/5.0');
+  },
+  onProxyRes: (proxyRes) => {
+    proxyRes.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+    proxyRes.headers['Access-Control-Allow-Methods'] = 'GET,HEAD,OPTIONS,POST,PUT';
+    
+    if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+      if (proxyRes.headers.location.includes('sonydaimenew.akamaized.net')) {
+         proxyRes.headers.location = proxyRes.headers.location.replace('https://sonydaimenew.akamaized.net', '/proxy-sony-akamai');
+      }
+    }
+  }
+}));
+
+// Sony Dish Proxy
+app.use('/proxy-sony-dish', createProxyMiddleware({
+  target: 'https://dishmt.slivcdn.com',
+  changeOrigin: true,
+  secure: false,
+  onProxyReq: (proxyReq, req) => {
+    const rawPath = req.url.replace(/^\/proxy-sony-dish/, '');
+    proxyReq.path = rawPath;
+    proxyReq.removeHeader('origin');
+    proxyReq.removeHeader('referer');
+    proxyReq.setHeader('User-Agent', 'Mozilla/5.0');
+  },
+  onProxyRes: (proxyRes) => {
+    proxyRes.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+    if (proxyRes.statusCode >= 300 && proxyRes.statusCode < 400 && proxyRes.headers.location) {
+      if (proxyRes.headers.location.includes('dishmt.slivcdn.com')) {
+         proxyRes.headers.location = proxyRes.headers.location.replace('https://dishmt.slivcdn.com', '/proxy-sony-dish');
+      }
+    }
   }
 }));
 
