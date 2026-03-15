@@ -363,17 +363,28 @@ export async function fetchChannels() {
                 } else {
                     // Extract just the ID if it's a php query
                     let channelId = idPath;
-                    if (channelId.includes('id=')) channelId = channelId.split('id=')[1];
-                    channelId = channelId.trim();
-
                     // Construct the actual target scrap PHP layout endpoint directly
                     let targetUrl = `https://allinonereborn.store/sony/ptest.php?id=${channelId}`;
 
-                    // Wrap in user's stream proxy layout
-                    url = `/livtest3/stream_proxy.php?url=${encodeURIComponent(targetUrl)}`;
+                    try {
+                        // Fetch the ptest.php page directly for this channel layout
+                        const res = await fetch(TATATV_JSON_PROXY.replace('/tatatv-json/xchannels.json', `/sony/ptest.php?id=${channelId}`)).catch(() => null);
+                        if (res?.ok) {
+                            const htmlPage = await res.text();
+                            const urlRegex = /const\s+videoUrl\s*=\s*"([^"]+)"/i;
+                            const urlMatch = urlRegex.exec(htmlPage);
+                            if (urlMatch && urlMatch[1]) {
+                                url = urlMatch[1]; // Sets layout /livtest3/stream_proxy.php layout exactly layout
+                            }
+                        }
+                    } catch (e) { }
 
                     if (import.meta.env.PROD) {
-                        url = url; // Relative path so Express processes it cleanly layout
+                        if (url && !url.startsWith('http') && url.startsWith('/')) {
+                            url = url; // Preserve relative path setup for Express layout
+                        } else if (url && url.startsWith('http')) {
+                            url = toProxyPath(url);
+                        }
                     }
                 }
 
