@@ -4,6 +4,13 @@
  * before forwarding to allinonereborn.online — browsers can't do this, Node.js can.
  */
 
+import staticTataTV from '../data/tatatv_channels.json';
+import staticIPTV from '../data/iptv_channels.json';
+import staticZee5 from '../data/zee5_channels.json';
+import staticFancode from '../data/fancode_channels.json';
+import staticJstr from '../data/jstr_channels.json';
+import staticSony from '../data/sony_channels.json';
+
 const PROXY_BASE = 'https://allinonereborn.store/livtest3/stream_proxy.php?url=';
 const DIRECT_BASE = 'https://allinonereborn.store';
 
@@ -84,10 +91,14 @@ export async function fetchChannels() {
     try {
         // 1. Fetch TataTV
         const tataRes = await fetch(TATATV_JSON_PROXY).catch(() => null);
+        let tataData = staticTataTV;
         if (tataRes?.ok) {
-            const data = await tataRes.json();
-            Object.keys(data).forEach(cat => {
-                data[cat].forEach((ch, i) => addChannel('TataTV', cat, {
+            try { tataData = await tataRes.json(); } catch (e) { console.warn('tata parse err', e); }
+        }
+        
+        if (tataData) {
+            Object.keys(tataData).forEach(cat => {
+                tataData[cat].forEach((ch, i) => addChannel('TataTV', cat, {
                     id: `tata-${cat}-${i}`,
                     name: ch.name,
                     logo: ch.logo,
@@ -100,10 +111,14 @@ export async function fetchChannels() {
 
         // 1.5 Fetch IPTV-WEB
         const iptvRes = await fetch(IPTV_WEB_JSON_PROXY).catch(() => null);
+        let iptvData = staticIPTV;
         if (iptvRes?.ok) {
-            const data = await iptvRes.json();
-            Object.keys(data).forEach(cat => {
-                data[cat].forEach((ch, i) => addChannel('IPTV', cat, {
+            try { iptvData = await iptvRes.json(); } catch (e) { console.warn('iptv parse err', e); }
+        }
+
+        if (iptvData) {
+            Object.keys(iptvData).forEach(cat => {
+                iptvData[cat].forEach((ch, i) => addChannel('IPTV', cat, {
                     id: `iptv-${cat}-${i}`,
                     name: ch.name,
                     logo: ch.logo,
@@ -116,9 +131,13 @@ export async function fetchChannels() {
 
         // 2. Fetch Zee5
         const zeeRes = await fetch(ZEE5_JSON_PROXY).catch(() => null);
+        let zeeData = staticZee5;
         if (zeeRes?.ok) {
-            const data = await zeeRes.json();
-            const channels = data.channels || [];
+            try { zeeData = await zeeRes.json(); } catch (e) { }
+        }
+
+        if (zeeData) {
+            const channels = zeeData.channels || [];
             channels.forEach((ch, i) => {
                 if (!ch || typeof ch !== 'object') return;
 
@@ -168,14 +187,18 @@ export async function fetchChannels() {
         // 2.5 Fetch Fancode Main List (Matches grouped by category, parsing multi-streams)
         const fcRes = await fetch(FANCODE_JSON_PROXY).catch(() => null);
         let primaryFcIds = new Set();
+        let fcData = staticFancode;
         
         if (fcRes?.ok) {
-            const data = await fcRes.json();
+            try { fcData = await fcRes.json(); } catch (e) { }
+        }
+
+        if (fcData) {
             // Try to extract matches from wherever they are in the JSON object
-            let matches = Array.isArray(data) ? data : (data.matches || []);
-            if (!Array.isArray(matches) && typeof data === 'string') {
+            let matches = Array.isArray(fcData) ? fcData : (fcData.matches || []);
+            if (!Array.isArray(matches) && typeof fcData === 'string') {
                 try {
-                    const parsed = JSON.parse(data);
+                    const parsed = JSON.parse(fcData);
                     matches = Array.isArray(parsed) ? parsed : (parsed.matches || []);
                 } catch (e) { }
             }
@@ -261,9 +284,13 @@ export async function fetchChannels() {
         // 2.7 Fetch JioTV
         const JIOTV_JSON_PROXY = buildApiUrl('/jstrweb2/jstr.json');
         const jioRes = await fetch(JIOTV_JSON_PROXY).catch(() => null);
+        let jioData = staticJstr;
         if (jioRes?.ok) {
-            const data = await jioRes.json();
-            const channels = Array.isArray(data) ? data : [];
+            try { jioData = await jioRes.json(); } catch (e) { }
+        }
+
+        if (jioData) {
+            const channels = Array.isArray(jioData) ? jioData : [];
             
             channels.forEach(ch => {
                 if (!ch || !ch.mpd) return;
@@ -370,9 +397,13 @@ export async function fetchChannels() {
 
         // 3.5 Fetch SonyLive Events JSON
         const sonyLiveEventsRes = await fetch('https://raw.githubusercontent.com/drmlive/sliv-live-events/main/sonyliv.json').catch(() => null);
+        let sonyLiveEventsData = staticSony;
         if (sonyLiveEventsRes?.ok) {
-            const data = await sonyLiveEventsRes.json();
-            let matches = data.matches || [];
+             try { sonyLiveEventsData = await sonyLiveEventsRes.json(); } catch (e) { }
+        }
+
+        if (sonyLiveEventsData) {
+            let matches = sonyLiveEventsData.matches || [];
             
             if (Array.isArray(matches)) {
                 matches.forEach((m, matchIdx) => {
