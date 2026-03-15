@@ -16,37 +16,19 @@ const STREAM_HEADERS = {
   'Connection': 'keep-alive'
 };
 
-// Common proxy for allinonereborn.store
-const allInOneProxy = createProxyMiddleware({
-  target: 'https://allinonereborn.store',
+const createAllInOneProxy = (pathSegment, referer) => createProxyMiddleware({
+  target: `https://allinonereborn.store${pathSegment}`,
   changeOrigin: true,
   secure: false,
   onProxyReq: (proxyReq, req, res) => {
-    // Inject general headers
     Object.entries(STREAM_HEADERS).forEach(([k, v]) => proxyReq.setHeader(k, v));
-    
-    // Inject specific Referers based on request URI
-    if (req.originalUrl.includes('/tatatv-web/')) {
-        proxyReq.setHeader('Referer', 'https://allinonereborn.online/tatatv-web/');
-    } else if (req.originalUrl.includes('/zee5/')) {
-        proxyReq.setHeader('Referer', 'https://allinonereborn.online/zee5/');
-    } else if (req.originalUrl.includes('/fctest/')) {
-        proxyReq.setHeader('Referer', 'https://allinonereborn.online/fctest/');
-    } else if (req.originalUrl.includes('/iptv-web/')) {
-        proxyReq.setHeader('Referer', 'https://allinonereborn.online/iptv-web/');
-    } else if (req.originalUrl.includes('/jstrweb2/')) {
-        proxyReq.setHeader('Referer', 'https://allinonereborn.online/jstrweb2/');
-    } else if (req.originalUrl.includes('/sony/')) {
-        proxyReq.setHeader('Referer', 'https://allinonereborn.online/sony/');
-    }
+    if (referer) proxyReq.setHeader('Referer', referer);
   },
   onProxyRes: (proxyRes, req, res) => {
-    // Ensure CORS is open for continuous segments
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
 
-    // Rewrite HTTP 302 redirects to use Relative paths for absolute decryption keys loops
     if (proxyRes.headers.location) {
         if (proxyRes.headers.location.includes('allinonereborn.store') || proxyRes.headers.location.includes('allinonereborn.online')) {
              try {
@@ -58,13 +40,14 @@ const allInOneProxy = createProxyMiddleware({
   }
 });
 
-// Mount proxies
-app.use('/tatatv-web', allInOneProxy);
-app.use('/fctest', allInOneProxy);
-app.use('/zee5', allInOneProxy);
-app.use('/jstrweb2', allInOneProxy);
-app.use('/sony', allInOneProxy);
-app.use('/iptv-web', allInOneProxy);
+// Mount proxies preserving path bases
+app.use('/tatatv-web', createAllInOneProxy('/tatatv-web', 'https://allinonereborn.online/tatatv-web/'));
+app.use('/fctest', createAllInOneProxy('/fctest', 'https://allinonereborn.online/fctest/'));
+app.use('/zee5', createAllInOneProxy('/zee5', 'https://allinonereborn.online/zee5/'));
+app.use('/jstrweb2', createAllInOneProxy('/jstrweb2', 'https://allinonereborn.online/jstrweb2/'));
+app.use('/sony', createAllInOneProxy('/sony', 'https://allinonereborn.online/sony/'));
+app.use('/livtest3', createAllInOneProxy('/livtest3', 'https://allinonereborn.online/livtest3/'));
+app.use('/iptv-web', createAllInOneProxy('/iptv-web', 'https://allinonereborn.online/iptv-web/'));
 
 // Fancode Live CDN
 app.use('/proxy-fancode-flive', createProxyMiddleware({
