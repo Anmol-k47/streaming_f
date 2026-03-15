@@ -21,8 +21,8 @@ function buildApiUrl(path) {
         if (path.startsWith('/tatatv-json/')) {
             remotePath = path.replace('/tatatv-json/', '/tatatv-web/');
         }
-        const absoluteUrl = `${DIRECT_BASE}${remotePath}`;
-        return `https://corsproxy.io/?url=${encodeURIComponent(absoluteUrl)}`;
+        // Return relative path so the new Express server proxies it with correct headers
+        return remotePath;
     }
     return path;
 }

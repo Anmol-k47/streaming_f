@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "node server.js"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -23,7 +24,9 @@
     "axios": "^1.13.6",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "express": "^5.2.1",
     "hls.js": "^1.6.15",
+    "http-proxy-middleware": "^3.0.5",
     "lucide-react": "^0.577.0",
     "postcss": "^8.5.8",
     "react": "^19.2.0",
