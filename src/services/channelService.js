@@ -366,14 +366,14 @@ export async function fetchChannels() {
                     if (channelId.includes('id=')) channelId = channelId.split('id=')[1];
                     channelId = channelId.trim();
 
-                    // Construct the actual target M3U8
-                    let targetM3u8 = `http://allinonereborn.store/sony-new/playlists/${channelId.replace(/-/g, '_')}.m3u8`;
+                    // Construct the actual target scrap PHP layout endpoint directly
+                    let targetUrl = `https://allinonereborn.store/sony/ptest.php?id=${channelId}`;
 
-                    // Wrap in user's proxy
-                    url = `/livtest3/stream_proxy.php?url=${encodeURIComponent(targetM3u8)}`;
+                    // Wrap in user's stream proxy layout
+                    url = `/livtest3/stream_proxy.php?url=${encodeURIComponent(targetUrl)}`;
 
                     if (import.meta.env.PROD) {
-                        url = DIRECT_BASE + url;
+                        url = url; // Relative path so Express processes it cleanly layout
                     }
                 }
 
