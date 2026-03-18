@@ -11,8 +11,8 @@ import staticFancode from '../data/fancode_channels.json';
 import staticJstr from '../data/jstr_channels.json';
 import staticSony from '../data/sony_channels.json';
 
-const PROXY_BASE = 'https://allinonereborn.store/livtest3/stream_proxy.php?url=';
-const DIRECT_BASE = 'https://allinonereborn.store';
+const PROXY_BASE = 'https://allinonereborn.online/livtest3/stream_proxy.php?url=';
+const DIRECT_BASE = 'https://allinonereborn.online';
 
 function buildApiUrl(path) {
     if (import.meta.env.PROD) {
@@ -42,13 +42,9 @@ function toProxyPath(url) {
         return PROXY_BASE + encodeURIComponent(url);
     }
 
-    // Leave absolute paths for /amit/ as they rely on direct cookies + have CORS open
-    if (url.includes('/amit/')) {
-        return url;
-    }
 
     // Only strip origin if it points to allinonereborn servers
-    if (url.includes('allinonereborn.store') || url.includes('allinonereborn.online')) {
+    if (url.includes('allinonereborn.online') || url.includes('allinonereborn.online')) {
         try {
             const u = new URL(url);
             return u.pathname + u.search;
@@ -317,6 +313,8 @@ export async function fetchChannels() {
                 let streamUrl = ch.mpd;
                 if (streamUrl.includes('jiotvmblive.cdn.jio.com')) {
                     streamUrl = streamUrl.replace('https://jiotvmblive.cdn.jio.com', '/proxy-jiotv-live');
+                } else if (streamUrl.includes('jiotvpllive.cdn.jio.com')) {
+                    streamUrl = streamUrl.replace('https://jiotvpllive.cdn.jio.com', '/proxy-jiotv-pllive');
                 }
                 
                 // 2. Append the required authentication token directly
@@ -347,7 +345,7 @@ export async function fetchChannels() {
             // looking for lines like: const channelData = {"id":"sony-hd", ... "m3u8": "..."};
             // Note: The user mentioned these are individual channel pages, we might be scraping the directory
             // which links to `ptest.php?id=...`. If we are scanning the directory, we need to extract the ID and build the m3u8.
-            // Allinone usually formats these as `http://allinonereborn.store/sony-new/playlists/{id}.m3u8` based on user's hint.
+            // Allinone usually formats these as `http://allinonereborn.online/sony-new/playlists/{id}.m3u8` based on user's hint.
 
             const cardRegex = /<a[^>]+href="(?:ptest\.php\?id=)?([^"]+)"[^>]*>[\s\S]*?<img[^>]+src="([^"]+)"[^>]*>[\s\S]*?<div[^>]+class="title"[^>]*>([^<]+)<\/div>[\s\S]*?<\/a>/gi;
 
@@ -364,29 +362,38 @@ export async function fetchChannels() {
                     // Extract just the ID if it's a php query
                     let channelId = idPath;
                     // Construct the actual target scrap PHP layout endpoint directly
-                    let targetUrl = `https://allinonereborn.store/sony/ptest.php?id=${channelId}`;
+                    let targetUrl = `https://allinonereborn.online/sony/ptest.php?id=${channelId}`;
 
                     try {
                         // Fetch the ptest.php page directly for this channel layout
-                        const res = await fetch(TATATV_JSON_PROXY.replace('/tatatv-json/xchannels.json', `/sony/ptest.php?id=${channelId}`)).catch(() => null);
+                        const fetchUrl = TATATV_JSON_PROXY.replace('/tatatv-json/xchannels.json', `/sony/ptest.php?id=${encodeURIComponent(channelId)}`);
+                        console.log(`[Sony Debug] channelId: ${channelId}, fetchUrl: ${fetchUrl}`);
+                        const res = await fetch(fetchUrl).catch(() => null);
                         if (res?.ok) {
                             const htmlPage = await res.text();
                             const urlRegex = /const\s+videoUrl\s*=\s*"([^"]+)"/i;
                             const urlMatch = urlRegex.exec(htmlPage);
                             if (urlMatch && urlMatch[1]) {
                                 url = urlMatch[1]; // Sets layout /livtest3/stream_proxy.php layout exactly layout
+                                console.log(`[Sony Debug] Found videoUrl: ${url}`);
+                            } else {
+                                console.log(`[Sony Debug] Regex failed, html head: ${htmlPage.slice(0, 300)}`);
                             }
+                        } else {
+                            console.log(`[Sony Debug] Fetch failed with status: ${res?.status}`);
                         }
-                    } catch (e) { }
+                    } catch (e) { 
+                        console.log(`[Sony Debug] Error fetching: ${e.message}`);
+                    }
 
-                    if (import.meta.env.PROD) {
-                        if (url && !url.startsWith('http') && url.startsWith('/')) {
-                            url = url; // Preserve relative path setup for Express layout
-                        } else if (url && url.startsWith('http')) {
-                            url = toProxyPath(url);
-                        }
+                    if (url && !url.startsWith('http') && url.startsWith('/')) {
+                        url = url; // Preserve relative path setup for Express layout
+                    } else if (url && url.startsWith('http')) {
+                        url = toProxyPath(url);
                     }
                 }
+
+                console.log(`[Sony Debug] Adding channel: ${titleText.trim()} with URL: ${url}`);
 
                 addChannel('Sony TV', 'Sony Channels', {
                     id: `sony-${i++}`,

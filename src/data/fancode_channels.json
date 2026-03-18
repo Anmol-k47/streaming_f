@@ -3,7 +3,7 @@
     "api_name": "FanCode Live Matches API",
     "source_last_updated": "04:21:02 PM 15-03-2026",
     "generated_at": "2026-03-15 10:52:03",
-    "base_url": "https://allinonereborn.store/fctest/",
+    "base_url": "https://allinonereborn.online/fctest/",
     "fallback_mode": false,
     "total_matches": 38,
     "live_matches_count": 8,
@@ -32,7 +32,7 @@
             "streams": [
                 {
                     "language": "ENGLISH",
-                    "playlist_url": "https://allinonereborn.store/fctest/playlists/match_141408/english.m3u8"
+                    "playlist_url": "https://allinonereborn.online/fctest/playlists/match_141408/english.m3u8"
                 }
             ]
         },
@@ -59,7 +59,7 @@
             "streams": [
                 {
                     "language": "ENGLISH",
-                    "playlist_url": "https://allinonereborn.store/fctest/playlists/match_133991/english.m3u8"
+                    "playlist_url": "https://allinonereborn.online/fctest/playlists/match_133991/english.m3u8"
                 }
             ]
         },
@@ -86,7 +86,7 @@
             "streams": [
                 {
                     "language": "ENGLISH",
-                    "playlist_url": "https://allinonereborn.store/fctest/playlists/match_141269/english.m3u8"
+                    "playlist_url": "https://allinonereborn.online/fctest/playlists/match_141269/english.m3u8"
                 }
             ]
         },
@@ -113,7 +113,7 @@
             "streams": [
                 {
                     "language": "ENGLISH",
-                    "playlist_url": "https://allinonereborn.store/fctest/playlists/match_141201/english.m3u8"
+                    "playlist_url": "https://allinonereborn.online/fctest/playlists/match_141201/english.m3u8"
                 }
             ]
         },
@@ -140,7 +140,7 @@
             "streams": [
                 {
                     "language": "ENGLISH",
-                    "playlist_url": "https://allinonereborn.store/fctest/playlists/match_141441/english.m3u8"
+                    "playlist_url": "https://allinonereborn.online/fctest/playlists/match_141441/english.m3u8"
                 }
             ]
         },

@@ -59,12 +59,14 @@ export function useStreamPlayer() {
                                 }
 
                                 // 2. Route traffic through our Vite dev proxy to bypass CORS
-                                if (context.url.includes('allinonereborn.store/sony-new/')) {
-                                    context.url = context.url.replace(/^https?:\/\/allinonereborn\.store/, '');
+                                if (context.url.includes('allinonereborn.online/')) {
+                                    context.url = context.url.replace(/^https?:\/\/allinonereborn\.online/, '');
                                 } else if (context.url.includes('in-mc-flive.fancode.com')) {
                                     context.url = context.url.replace('https://in-mc-flive.fancode.com', '/proxy-fancode-flive');
                                 } else if (context.url.includes('in-mc-fdlive.fancode.com')) {
                                     context.url = context.url.replace('https://in-mc-fdlive.fancode.com', '/proxy-fancode-fdlive');
+                                } else if (context.url.includes('in-mc-plive.fancode.com')) {
+                                    context.url = context.url.replace('https://in-mc-plive.fancode.com', '/proxy-fancode-plive');
                                 } else if (context.url.includes('dai.google.com')) {
                                     // Sometimes Fancode has dynamically inserted ads that also need proxying
                                 } else if (context.url.includes('sonydaimenew.akamaized.net')) {
@@ -281,7 +283,27 @@ export function useStreamPlayer() {
                 // Network request/response logging
                 player.getNetworkingEngine().registerRequestFilter((type, request) => {
                     const typeNames = { 0: 'MANIFEST', 1: 'SEGMENT', 2: 'LICENSE', 3: 'APP', 4: 'TIMING', 5: 'SERVER_CERTIFICATE' };
-                    console.log(`🌐 [JioTV Debug] Request [${typeNames[type] || type}]: ${request.uris[0].substring(0, 120)}...`);
+                    let uri = request.uris[0];
+                    
+                    if (uri && !uri.startsWith('data:')) {
+                        if (uri.includes('jiotvpllive.cdn.jio.com')) {
+                            uri = uri.replace('https://jiotvpllive.cdn.jio.com', '/proxy-jiotv-pllive');
+                        } else if (uri.includes('jiotvmblive.cdn.jio.com')) {
+                            uri = uri.replace('https://jiotvmblive.cdn.jio.com', '/proxy-jiotv-live');
+                        } else if (uri.includes('in-mc-flive.fancode.com')) {
+                            uri = uri.replace('https://in-mc-flive.fancode.com', '/proxy-fancode-flive');
+                        } else if (uri.includes('in-mc-fdlive.fancode.com')) {
+                            uri = uri.replace('https://in-mc-fdlive.fancode.com', '/proxy-fancode-fdlive');
+                        } else if (uri.includes('in-mc-plive.fancode.com')) {
+                            uri = uri.replace('https://in-mc-plive.fancode.com', '/proxy-fancode-plive');
+                        } else if (uri.includes('sonydaimenew.akamaized.net')) {
+                            uri = uri.replace('https://sonydaimenew.akamaized.net', '/proxy-sony-akamai');
+                        } else if (uri.includes('dishmt.slivcdn.com')) {
+                            uri = uri.replace('https://dishmt.slivcdn.com', '/proxy-sony-dish');
+                        }
+                        request.uris[0] = uri;
+                    }
+                    console.log(`🌐 [Proxy Rewriter] Request [${typeNames[type] || type}]: ${request.uris[0].substring(0, 120)}...`);
                 });
 
                 player.getNetworkingEngine().registerResponseFilter((type, response) => {

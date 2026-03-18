@@ -17,7 +17,7 @@ const STREAM_HEADERS = {
 };
 
 const createAllInOneProxy = (pathSegment, referer) => createProxyMiddleware({
-  target: `https://allinonereborn.store${pathSegment}`,
+  target: `https://allinonereborn.online${pathSegment}`,
   changeOrigin: true,
   secure: false,
   onProxyReq: (proxyReq, req, res) => {
@@ -30,7 +30,7 @@ const createAllInOneProxy = (pathSegment, referer) => createProxyMiddleware({
     res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Range');
 
     if (proxyRes.headers.location) {
-        if (proxyRes.headers.location.includes('allinonereborn.store') || proxyRes.headers.location.includes('allinonereborn.online')) {
+        if (proxyRes.headers.location.includes('allinonereborn.online') || proxyRes.headers.location.includes('allinonereborn.online')) {
              try {
                  const u = new URL(proxyRes.headers.location);
                  proxyRes.headers.location = u.pathname + u.search;
@@ -74,6 +74,41 @@ app.use('/proxy-fancode-fdlive', createProxyMiddleware({
   headers: {
     'Origin': 'https://www.fancode.com',
     'Referer': 'https://www.fancode.com/'
+  },
+  onProxyRes: (proxyRes) => {
+    proxyRes.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+  }
+}));
+
+// Fancode PLIVE CDN
+app.use('/proxy-fancode-plive', createProxyMiddleware({
+  target: 'https://in-mc-plive.fancode.com',
+  changeOrigin: true,
+  secure: false,
+  pathRewrite: { '^/proxy-fancode-plive': '' },
+  headers: {
+    'Origin': 'https://www.fancode.com',
+    'Referer': 'https://www.fancode.com/'
+  },
+  onProxyRes: (proxyRes) => {
+    proxyRes.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+    proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+  }
+}));
+
+// JioTV Playlist Live Proxy
+app.use('/proxy-jiotv-pllive', createProxyMiddleware({
+  target: 'https://jiotvpllive.cdn.jio.com',
+  changeOrigin: true,
+  secure: false,
+  onProxyReq: (proxyReq, req, res) => {
+    const rawPath = req.url.replace(/^\/proxy-jiotv-pllive/, '');
+    proxyReq.path = rawPath;
+    proxyReq.removeHeader('origin');
+    proxyReq.setHeader('Origin', 'https://www.jiotv.com');
+    proxyReq.setHeader('Referer', 'https://www.jiotv.com/');
+    proxyReq.setHeader('User-Agent', '@allinone_reborn');
   },
   onProxyRes: (proxyRes) => {
     proxyRes.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';

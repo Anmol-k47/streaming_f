@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 // Headers the stream server requires (Node.js proxy has no forbidden-header restriction)
 const STREAM_HEADERS = {
   'Referer': 'https://allinonereborn.online/tatatv-web/',  // server validates this
-  'Origin': 'https://allinonereborn.store',
+  'Origin': 'https://allinonereborn.online',
   'sec-fetch-dest': 'empty',
   'sec-fetch-mode': 'cors',
   'sec-fetch-site': 'same-origin',
@@ -20,9 +20,9 @@ export default defineConfig({
     port: process.env.PORT || 5173, // Binds to the port Render provides
     allowedHosts: true, // Disables Vite's DNS rebinding protection for Render URLs
     proxy: {
-      // /tatatv-web/* → allinonereborn.store with injected Referer
+      // /tatatv-web/* → allinonereborn.online with injected Referer
       '/tatatv-web': {
-        target: 'https://allinonereborn.store',
+        target: 'https://allinonereborn.online',
         changeOrigin: true,
         secure: false,
         headers: STREAM_HEADERS,
@@ -40,76 +40,76 @@ export default defineConfig({
         },
       },
 
-      // /tatatv-json/* → allinonereborn.store/tatatv-web/
+      // /tatatv-json/* → allinonereborn.online/tatatv-web/
       '/tatatv-json': {
-        target: 'https://allinonereborn.store',
+        target: 'https://allinonereborn.online',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/tatatv-json/, '/tatatv-web'),
       },
 
-      // /zee5/* → allinonereborn.store/zee5/
+      // /zee5/* → allinonereborn.online/zee5/
       '/zee5': {
-        target: 'https://allinonereborn.store',
+        target: 'https://allinonereborn.online',
         changeOrigin: true,
         secure: false,
         headers: STREAM_HEADERS,
       },
 
-      // /sony/* → allinonereborn.store/sony/
+      // /sony/* → allinonereborn.online/sony/
       '/sony': {
-        target: 'https://allinonereborn.store',
+        target: 'https://allinonereborn.online',
         changeOrigin: true,
         secure: false,
         headers: STREAM_HEADERS,
       },
 
-      // /sony-new/* → allinonereborn.store/sony-new/
+      // /sony-new/* → allinonereborn.online/sony-new/
       '/sony-new': {
-        target: 'https://allinonereborn.store',
+        target: 'https://allinonereborn.online',
         changeOrigin: true,
         secure: false,
         headers: STREAM_HEADERS,
       },
 
-      // /livtest3/* → allinonereborn.store/livtest3/
+      // /livtest3/* → allinonereborn.online/livtest3/
       '/livtest3': {
-        target: 'https://allinonereborn.store',
+        target: 'https://allinonereborn.online',
         changeOrigin: true,
         secure: false,
         headers: STREAM_HEADERS,
       },
 
-      // /iptv-web/* → allinonereborn.store/iptv-web/
+      // /iptv-web/* → allinonereborn.online/iptv-web/
       '/iptv-web': {
-        target: 'https://allinonereborn.store',
+        target: 'https://allinonereborn.online',
         changeOrigin: true,
         secure: false,
         headers: STREAM_HEADERS,
       },
 
-      // /fctest/* → allinonereborn.store/fctest/
+      // /fctest/* → allinonereborn.online/fctest/
       '/fctest': {
-        target: 'https://allinonereborn.store',
+        target: 'https://allinonereborn.online',
         changeOrigin: true,
         secure: false,
         headers: {
           ...STREAM_HEADERS,
-          'Referer': 'https://allinonereborn.store/fcww/player_india.html'
+          'Referer': 'https://allinonereborn.online/fcww/player_india.html'
         },
       },
 
-      // /amit/* → allinonereborn.store/amit/
+      // /amit/* → allinonereborn.online/amit/
       '/amit': {
-        target: 'https://allinonereborn.store',
+        target: 'https://allinonereborn.online',
         changeOrigin: true,
         secure: false,
         headers: STREAM_HEADERS,
       },
 
-      // /jstrweb2/* → allinonereborn.store/jstrweb2/
+      // /jstrweb2/* → allinonereborn.online/jstrweb2/
       '/jstrweb2': {
-        target: 'https://allinonereborn.store',
+        target: 'https://allinonereborn.online',
         changeOrigin: true,
         secure: false,
         headers: STREAM_HEADERS,
@@ -147,6 +147,55 @@ export default defineConfig({
         configure: (proxy) => {
           proxy.on('error', (err, req) => console.error(`[Proxy ERROR] ${req.url}:`, err.message))
           proxy.on('proxyRes', (proxyRes) => {
+            proxyRes.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+            proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+          })
+        },
+      },
+
+      // Proxy for Fancode PLIVE CDN
+      '/proxy-fancode-plive': {
+        target: 'https://in-mc-plive.fancode.com',
+        changeOrigin: true,
+        secure: false,
+        rewrite: (path) => path.replace(/^\/proxy-fancode-plive/, ''),
+        headers: {
+          'Origin': 'https://www.fancode.com',
+          'Referer': 'https://www.fancode.com/'
+        },
+        configure: (proxy) => {
+          proxy.on('error', (err, req) => console.error(`[Proxy ERROR] ${req.url}:`, err.message))
+          proxy.on('proxyRes', (proxyRes) => {
+            proxyRes.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
+            proxyRes.headers['Access-Control-Allow-Origin'] = '*';
+          })
+        },
+      },
+
+      // Proxy for JioTV Playlist Live CDN
+      '/proxy-jiotv-pllive': {
+        target: 'https://jiotvpllive.cdn.jio.com',
+        changeOrigin: true,
+        secure: false,
+        headers: {
+          'Origin': 'https://www.jiotv.com',
+          'Referer': 'https://www.jiotv.com/',
+          'User-Agent': '@allinone_reborn',
+          'Accept': '*/*'
+        },
+        configure: (proxy) => {
+          proxy.on('error', (err, req) => console.error(`[JioTV Proxy ERROR] ${req.url}:`, err.message))
+
+          proxy.on('proxyReq', (proxyReq, req, res) => {
+            const rawPath = req.url.replace(/^\/proxy-jiotv-pllive/, '');
+            proxyReq.path = rawPath;
+            proxyReq.removeHeader('origin');
+            proxyReq.setHeader('Origin', 'https://www.jiotv.com');
+            proxyReq.setHeader('Referer', 'https://www.jiotv.com/');
+            proxyReq.setHeader('User-Agent', '@allinone_reborn');
+          });
+
+          proxy.on('proxyRes', (proxyRes, req) => {
             proxyRes.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate';
             proxyRes.headers['Access-Control-Allow-Origin'] = '*';
           })
